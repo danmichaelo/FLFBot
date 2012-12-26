@@ -3,14 +3,37 @@ from __future__ import unicode_literals
 
 import time
 from datetime import datetime, timedelta
+import pytz
 import sqlite3
 import mwclient
 import urllib
 from danmicholoparser import DanmicholoParser, DanmicholoParseError
-from wp_private import botlogin
-
 import locale
-locale.setlocale(locale.LC_TIME, 'no_NO.utf-8'.encode('utf-8'))
+from wp_private import botlogin, mailfrom, mailto
+import logging
+import logging.handlers
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s %(levelname)s] %(message)s')
+
+smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
+                fromaddr = mailfrom, toaddrs = mailto, 
+                subject=u"[toolserver] CatWatchBot crashed!")
+smtp_handler.setLevel(logging.ERROR)
+logger.addHandler(smtp_handler)
+
+file_handler = logging.handlers.RotatingFileHandler('ffbot.log', maxBytes=100000, backupCount=3)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+
+for loc in ['no_NO', 'nb_NO.utf8']:
+    try:
+        locale.setlocale(locale.LC_ALL, loc.encode('utf-8'))
+    except locale.Error:
+        pass
 
 no = mwclient.Site('no.wikipedia.org')
 no.login(*botlogin)
@@ -87,7 +110,7 @@ for p in pages:
     cur.execute('SELECT target, target2, date, revid, parentid, user, comment, reason FROM list WHERE page=?', [p.name])
     s = cur.fetchall()
     in_db = (len(s) > 0)
-    print p.name
+    logger.info('article: %s', p.name)
     if in_db:
         rev = { 'to': s[0][0], 'to2': s[0][1], 'date': datetime.strptime(s[0][2], '%Y-%m-%d'), 
                 'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
@@ -100,29 +123,32 @@ for p in pages:
         elif 'flytting' in k:
             t = dp.templates['flytting'][0]
         else:
-            print "> fant ikke noen mal"
+            logger.info("> fant ikke noen mal")
             continue
         tk = t.parameters.keys()
         if not 1 in tk:
-            print " > Ingen parametre gitt til malen!"
+            logger.info(" > Ingen parametre gitt til malen!")
             continue
 
-        print ' -> %s' % t.parameters[1]
+        logger.info(' -> %s', t.parameters[1])
         fra = '[[%s]]' % p.name
 
         rev = find_rev(p.name, ['flytt','flytting'])
         if rev == False:
             continue
 
-        rev['to'] = t.parameters[1]
+        rev['to'] = t.parameters[1].strip('[]')
         rev['to2'] = ''
         rev['reason'] = ''
         if 2 in tk:
-            #print ' eller: %s' % t.parameters[2]
-            rev['to2'] += t.parameters[2]
-        if 'begrunnelse' in tk:
-            print ' begrunnelse: %s' % t.parameters['begrunnelse']
+            logger.info(' begrunnelse: %s', t.parameters[2])
+            rev['reason'] = t.parameters[2].strip()
+        elif 'begrunnelse' in tk:
+            logger.info(' begrunnelse: %s', t.parameters['begrunnelse'])
             rev['reason'] = t.parameters['begrunnelse'].strip()
+
+        if 'alternativ' in tk:
+            rev['to2'] += t.parameters['alternativ']
 
         vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
         cur.execute('INSERT INTO list (page, target, target2, date, revid, parentid, user, comment, reason) VALUES (?,?,?,?,?,?,?,?,?)', vals)
@@ -156,13 +182,21 @@ pnames = [p.name for p in pages]
 for row in cur.execute('SELECT page FROM list'):
     n = row[0]
     if not n in pnames:
-        print "Page %s found in db, but not in cat. Removing from db" % n
+        logger.info("Page %s found in db, but not in cat. Removing from db", n)
         # DELETE FROM .. WHERE page=? , n
 
 entries.sort(key = lambda x: x[0])
-text = '{| class="wikitable"\n! Forslag !! Begrunnelse \n' + ''.join([e[1] for e in entries]) + '|}\n'
+now = pytz.utc.localize(datetime.now())
+osl = pytz.timezone('Europe/Oslo')
+text = '\n'.join(['<noinclude>',
+    '{{Bruker:DanmicholoBot/robotinfo|flytt|%s}}' % now.astimezone(osl).strftime('%F %T'),
+    '</noinclude>',
+    '{| class="wikitable"',
+    '|+ Sider merket for flytting vha. {{ml|Flytt}}',
+    '! Forslag !! Begrunnelse \n' + ''.join([e[1] for e in entries]) + '|}',
+    '[[Kategori:Wikipedia-vedlikehold|Fletteforslag]]'])
 
-page = no.pages['Bruker:DanmicholoBot/Sandkasse']
+page = no.pages['Wikipedia:Flytteforslag']
 page.edit()
 page.save(text, 'Oppdaterer')
 
