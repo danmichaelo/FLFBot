@@ -194,10 +194,8 @@ for row in cur.execute('SELECT page FROM list'):
 sql.commit()
 
 entries.sort(key = lambda x: x[0])
-now = pytz.utc.localize(datetime.now())
-osl = pytz.timezone('Europe/Oslo')
 text = '\n'.join(['<noinclude>',
-    '{{Bruker:FLFBot/robotinfo|flytt|%s}}' % now.astimezone(osl).strftime('%F %T'),
+    '{{Bruker:FLFBot/robotinfo|flytt}}', 
     '</noinclude>',
     '{| class="wikitable"',
     '|+ Sider merket for flytting vha. {{ml|Flytt}}',
@@ -213,9 +211,15 @@ if len(removed) == 1:
     summary.append('flytteforslag behandlet: %s' % removed[0])
 elif len(removed) > 1:
     summary.append('%d flytteforslag behandlet' % len(removed))
-page = no.pages['Wikipedia:Flytteforslag']
-page.edit()
-page.save(text, ', '.join(summary))
+
+if len(added) == 0 and len(removed) == 0:
+    pass
+    logger.info("Ingen endringer, avslutter")
+else:
+    page = no.pages['Wikipedia:Flytteforslag']
+    page.edit()
+    page.save(text, ', '.join(summary))
+    logger.info("Oppdaterte Wikipedia:Flytteforslag")
 
 
 
