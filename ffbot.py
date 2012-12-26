@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import time
 from datetime import datetime, timedelta
-import pytz
 import sqlite3
 import mwclient
 import urllib
