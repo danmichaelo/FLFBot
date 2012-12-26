@@ -106,6 +106,10 @@ sql = sqlite3.connect('ffbot.db')
 cur = sql.cursor()
 in_db = False
 entries = []
+
+added = []
+removed = []
+
 for p in pages:
     cur.execute('SELECT target, target2, date, revid, parentid, user, comment, reason FROM list WHERE page=?', [p.name])
     s = cur.fetchall()
@@ -152,6 +156,7 @@ for p in pages:
 
         vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
         cur.execute('INSERT INTO list (page, target, target2, date, revid, parentid, user, comment, reason) VALUES (?,?,?,?,?,?,?,?,?)', vals)
+        added.append(p.name)
 
     #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
 
@@ -183,22 +188,34 @@ for row in cur.execute('SELECT page FROM list'):
     n = row[0]
     if not n in pnames:
         logger.info("Page %s found in db, but not in cat. Removing from db", n)
-        # DELETE FROM .. WHERE page=? , n
+        cur.execute('DELETE FROM list WHERE page=?', [n])
+        removed.append(n)
+
+sql.commit()
 
 entries.sort(key = lambda x: x[0])
 now = pytz.utc.localize(datetime.now())
 osl = pytz.timezone('Europe/Oslo')
 text = '\n'.join(['<noinclude>',
-    '{{Bruker:DanmicholoBot/robotinfo|flytt|%s}}' % now.astimezone(osl).strftime('%F %T'),
+    '{{Bruker:FLFBot/robotinfo|flytt|%s}}' % now.astimezone(osl).strftime('%F %T'),
     '</noinclude>',
     '{| class="wikitable"',
     '|+ Sider merket for flytting vha. {{ml|Flytt}}',
     '! Forslag !! Begrunnelse \n' + ''.join([e[1] for e in entries]) + '|}',
     '[[Kategori:Wikipedia-vedlikehold|Fletteforslag]]'])
 
+summary = []
+if len(added) == 1:
+    summary.append('Nytt flytteforslag: %s' % added[0])
+elif len(added) > 1:
+    summary.append('%d nye flytteforslag: %s' % len(added))
+if len(removed) == 1:
+    summary.append('flytteforslag behandlet: %s' % removed[0])
+elif len(removed) > 1:
+    summary.append('%d flytteforslag behandlet' % len(removed))
 page = no.pages['Wikipedia:Flytteforslag']
 page.edit()
-page.save(text, 'Oppdaterer')
+page.save(text, ', '.join(summary))
 
 
 
