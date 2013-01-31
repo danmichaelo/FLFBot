@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import time
+import re
 from datetime import datetime, timedelta
 import sqlite3
 import mwclient
@@ -72,7 +73,7 @@ def find_rev(p, templates):
                             break
                         foundCleanRev = True
                         for t in templates:
-                            if txt.lower().find(u'{{%s'%t) != -1:
+                            if re.search(ur'{{\s*(mal:|template:)?%s'%t, txt, re.IGNORECASE):
                                 foundCleanRev = False
                         if foundCleanRev:
                             break
@@ -100,125 +101,140 @@ def find_rev(p, templates):
         #cur.close()
 
 
-pages = [c for c in no.categories['Artikler som bør flyttes']]
 sql = sqlite3.connect('ffbot.db')
 cur = sql.cursor()
 in_db = False
-entries = []
 
-added = []
-removed = []
 
-for p in pages:
-    cur.execute('SELECT target, target2, date, revid, parentid, user, comment, reason FROM list WHERE page=?', [p.name])
-    s = cur.fetchall()
-    in_db = (len(s) > 0)
-    logger.info('article: %s', p.name)
-    if in_db:
-        rev = { 'to': s[0][0], 'to2': s[0][1], 'date': datetime.strptime(s[0][2], '%Y-%m-%d'), 
-                'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
-        
-    else:
-        dp = DanmicholoParser(p.edit(readonly = True))
-        k = dp.templates.keys()
-        if 'flytt' in k:
-            t = dp.templates['flytt'][0]
-        elif 'flytting' in k:
-            t = dp.templates['flytting'][0]
-        else:
-            logger.info("> fant ikke noen mal")
-            continue
-        tk = t.parameters.keys()
-        if not 1 in tk:
-            logger.info(" > Ingen parametre gitt til malen!")
-            continue
+def main(catname, pagename, what, templates, table):
+    pages = [c for c in no.categories[catname]]
+    entries = []
+    added = []
+    removed = []
+    template = templates[0]
 
-        logger.info(' -> %s', t.parameters[1])
-        fra = '[[%s]]' % p.name
-
-        rev = find_rev(p.name, ['flytt','flytting'])
-        if rev == False:
-            continue
-
-        rev['to'] = t.parameters[1].strip('[]')
-        rev['to2'] = ''
-        rev['reason'] = ''
-        if 2 in tk:
-            logger.info(' begrunnelse: %s', t.parameters[2])
-            rev['reason'] = t.parameters[2].strip()
-        elif 'begrunnelse' in tk:
-            logger.info(' begrunnelse: %s', t.parameters['begrunnelse'])
-            rev['reason'] = t.parameters['begrunnelse'].strip()
-
-        if 'alternativ' in tk:
-            rev['to2'] += t.parameters['alternativ']
-
-        vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
-        cur.execute('INSERT INTO list (page, target, target2, date, revid, parentid, user, comment, reason) VALUES (?,?,?,?,?,?,?,?,?)', vals)
-        added.append(p.name)
-
-    #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
-
-    q = { 'title': p.name.encode('utf-8'), 'oldid': rev['id'], 'diff': 'prev' }
-    link = '[%s Foreslått]' % ('//' + no.host + no.site['script'] + '?' + urllib.urlencode(q))
-    #submitter = ''<br />%s' % (rev['user'], rev['user'], link)
-    
-    entry = ''
-    if len(rev['reason']) != 0:
-        entry += '<abbr style="color: #999; " title="Begrunnelse i mal">B:</span> %s<br />' % rev['reason']
-    if len(rev['comment']) != 0:
-        entry += '<abbr style="color: #999; " title="Redigeringsforklaring">R:</abbr> <nowiki>%s</nowiki><br />' % rev['comment']
-    entry += "<small>''%s av [[Bruker:%s|%s]] den %s''</small>" % (link, rev['user'], rev['user'], rev['date'].strftime('%e. %B %Y'))
-
-    fra = '[[%s]]' % p.name
-    til = '[[%s]]' % rev['to']
-    if len(rev['to2']) != 0:
-        til += '<br />&nbsp;&nbsp; eller [[%s]]' % rev['to2']
-
-    text = '|-\n| %s<br /> → %s \n| %s \n' % (fra, til, entry)
-    entries.append([rev['date'], text])
-
-    #time.sleep(1)
+    for p in pages:
+        cur.execute('SELECT target, target2, date, revid, parentid, user, comment, reason FROM %s WHERE page=?' % table, [p.name])
+        s = cur.fetchall()
+        in_db = (len(s) > 0)
+        logger.info('article: %s', p.name)
+        if in_db:
+            rev = { 'to': s[0][0], 'to2': s[0][1], 'date': datetime.strptime(s[0][2], '%Y-%m-%d'), 
+                    'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
             
-sql.commit()
+        else:
+            dp = DanmicholoParser(p.edit(readonly = True))
+            k = dp.templates.keys()
+            t = None
+            for tpl in templates:
+                if tpl in k:
+                    t = dp.templates[tpl][0]
+                    break
+            if t == None:
+                logger.warn("> fant ikke noen mal")
+                continue
+            tk = t.parameters.keys()
+            if not 1 in tk:
+                logger.warn(" > Ingen parametre gitt til malen!")
+                continue
 
-pnames = [p.name for p in pages]
-for row in cur.execute('SELECT page FROM list'):
-    n = row[0]
-    if not n in pnames:
+            logger.info(' -> %s', t.parameters[1])
+            fra = '[[%s]]' % p.name
+
+            rev = find_rev(p.name, templates)
+            if rev == False:
+                logger.warn(' fant ikke innsettingsrevisjonen for malen')
+                continue
+
+            rev['to'] = t.parameters[1].strip('[]')
+            rev['to2'] = ''
+            rev['reason'] = ''
+            if 2 in tk:
+                logger.info(' begrunnelse: %s', t.parameters[2])
+                rev['reason'] = t.parameters[2].strip()
+            elif 'begrunnelse' in tk:
+                logger.info(' begrunnelse: %s', t.parameters['begrunnelse'])
+                rev['reason'] = t.parameters['begrunnelse'].strip()
+
+            if 'alternativ' in tk:
+                rev['to2'] += t.parameters['alternativ']
+
+            vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
+            cur.execute('INSERT INTO %s (page, target, target2, date, revid, parentid, user, comment, reason) VALUES (?,?,?,?,?,?,?,?,?)' % table, vals)
+            added.append(p.name)
+
+        #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
+
+        q = { 'title': p.name.encode('utf-8'), 'oldid': rev['id'], 'diff': 'prev' }
+        link = '[%s Foreslått]' % ('//' + no.host + no.site['script'] + '?' + urllib.urlencode(q))
+        #submitter = ''<br />%s' % (rev['user'], rev['user'], link)
+        
+        entry = ''
+        if len(rev['reason']) != 0:
+            entry += '<abbr style="color: #999; " title="Begrunnelse i mal">B:</span> %s<br />' % rev['reason']
+        if len(rev['comment']) != 0:
+            entry += '<abbr style="color: #999; " title="Redigeringsforklaring">R:</abbr> <nowiki>%s</nowiki><br />' % rev['comment']
+        entry += "<small>''%s av [[Bruker:%s|%s]] den %s''</small>" % (link, rev['user'], rev['user'], rev['date'].strftime('%e. %B %Y'))
+
+        fra = '[[:%s]]' % p.name
+        til = '[[:%s]]' % rev['to']
+        if len(rev['to2']) != 0:
+            til += '<br />&nbsp;&nbsp; eller [[%s]]' % rev['to2']
+
+        text = '|-\n| %s<br /> → %s \n| %s \n' % (fra, til, entry)
+        entries.append([rev['date'], text])
+
+        #time.sleep(1)
+                
+    sql.commit()
+
+    # Remove processed entries from DB
+
+    pnames = [p.name for p in pages]
+    for row in cur.execute('SELECT page FROM %s' % table):
+        n = row[0]
+        if not n in pnames:
+            removed.append(n)
+    for n in removed:
         logger.info("Page %s found in db, but not in cat. Removing from db", n)
-        cur.execute('DELETE FROM list WHERE page=?', [n])
-        removed.append(n)
+        cur.execute('DELETE FROM %s WHERE page=?' % table, [n])
 
-sql.commit()
+    sql.commit()
 
-entries.sort(key = lambda x: x[0])
-text = '\n'.join(['<noinclude>',
-    '{{Bruker:FLFBot/robotinfo|flytt}}', 
-    '</noinclude>',
-    '{| class="wikitable"',
-    '|+ Sider merket for flytting vha. {{ml|Flytt}}',
-    '! Forslag !! Begrunnelse \n' + ''.join([e[1] for e in entries]) + '|}',
-    '[[Kategori:Wikipedia-vedlikehold|Fletteforslag]]'])
+    # Prepare output
 
-summary = []
-if len(added) == 1:
-    summary.append('Nytt flytteforslag: %s' % added[0])
-elif len(added) > 1:
-    summary.append('%d nye flytteforslag: %s' % len(added))
-if len(removed) == 1:
-    summary.append('flytteforslag behandlet: %s' % removed[0])
-elif len(removed) > 1:
-    summary.append('%d flytteforslag behandlet' % len(removed))
+    entries.sort(key = lambda x: x[0])
+    text = '\n'.join(['<noinclude>',
+        '{{Bruker:FLFBot/robotinfo|%s}}' % template, 
+        '</noinclude>',
+        '{| class="wikitable"',
+        '|+ Sider merket for flytting vha. {{ml|%s}}' % template,
+        '! Forslag !! Begrunnelse \n' + ''.join([e[1] for e in entries]) + '|}',
+        '[[Kategori:Wikipedia-vedlikehold|%s]]' % what])
 
-if len(added) == 0 and len(removed) == 0:
-    pass
-    logger.info("Ingen endringer, avslutter")
-else:
-    page = no.pages['Wikipedia:Flytteforslag']
-    page.edit()
-    page.save(text, ', '.join(summary))
-    logger.info("Oppdaterte Wikipedia:Flytteforslag")
+    summary = []
+    if len(added) == 1:
+        summary.append('Nytt %s: %s' % (what.lower(), added[0]))
+    elif len(added) > 1:
+        summary.append('%d nye %s' % (len(added), what.lower()))
+    if len(removed) == 1:
+        summary.append('%s behandlet: %s' % (what, removed[0]))
+    elif len(removed) > 1:
+        summary.append('%d %s behandlet' % (len(removed), what.lower()))
+
+    if len(added) == 0 and len(removed) == 0:
+        pass
+        logger.info("Ingen endringer, avslutter")
+    else:
+        if pagename == None:
+            print text
+        else:
+            page = no.pages[pagename]
+            page.edit()
+            page.save(text, ', '.join(summary))
+            logger.info('Oppdaterte %s' % pagename)
 
 
 
+main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['flytt', 'flytting'], table='moves')
+#main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')

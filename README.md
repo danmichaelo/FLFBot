@@ -2,7 +2,7 @@ Tool to monitor suggested moves and merges at Norwegian Bokmål Wikipedia.
 
 DB Setup: <code>sqlite3 ffbot.db</code> and 
 ````
-CREATE TABLE list (
+CREATE TABLE moves (
   page TEXT NOT NULL,
   target TEXT NOT NULL,
   target2 TEXT NOT NULL,
