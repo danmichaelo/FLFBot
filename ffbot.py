@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import mwclient
 import urllib
-from danmicholoparser import DanmicholoParser, DanmicholoParseError
+from mwtemplates import TemplateEditor
 import locale
 from wp_private import botlogin, mailfrom, mailto
 import logging
@@ -123,18 +123,16 @@ def main(catname, pagename, what, templates, table):
                     'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
             
         else:
-            dp = DanmicholoParser(p.edit(readonly = True))
-            k = dp.templates.keys()
+            dp = TemplateEditor(p.edit(readonly = True))
             t = None
             for tpl in templates:
-                if tpl in k:
+		if tpl in dp.templates:
                     t = dp.templates[tpl][0]
                     break
             if t == None:
                 logger.warn("> fant ikke noen mal")
                 continue
-            tk = t.parameters.keys()
-            if not 1 in tk:
+            if not 1 in t.parameters:
                 logger.warn(" > Ingen parametre gitt til malen!")
                 continue
 
@@ -146,17 +144,17 @@ def main(catname, pagename, what, templates, table):
                 logger.warn(' fant ikke innsettingsrevisjonen for malen')
                 continue
 
-            rev['to'] = t.parameters[1].strip('[]')
+            rev['to'] = t.parameters[1].value.strip('[]')
             rev['to2'] = ''
             rev['reason'] = ''
-            if 2 in tk:
+            if 2 in t.parameters:
                 logger.info(' begrunnelse: %s', t.parameters[2])
-                rev['reason'] = t.parameters[2].strip()
-            elif 'begrunnelse' in tk:
+                rev['reason'] = t.parameters[2].value
+            elif 'begrunnelse' in t.parameters:
                 logger.info(' begrunnelse: %s', t.parameters['begrunnelse'])
-                rev['reason'] = t.parameters['begrunnelse'].strip()
+                rev['reason'] = t.parameters['begrunnelse'].value
 
-            if 'alternativ' in tk:
+            if 'alternativ' in t.parameters:
                 rev['to2'] += t.parameters['alternativ']
 
             vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
@@ -236,5 +234,5 @@ def main(catname, pagename, what, templates, table):
 
 
 
-main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['flytt', 'flytting'], table='moves')
+main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
 #main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')
