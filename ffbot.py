@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import mwclient
 import urllib
-from danmicholoparser import DanmicholoParser, DanmicholoParseError
+from danmicholoparser import TemplateEditor, DanmicholoParseError
 import locale
 from wp_private import botlogin, mailfrom, mailto
 import logging
@@ -38,7 +38,7 @@ for loc in ['no_NO', 'nb_NO.utf8']:
 no = mwclient.Site('no.wikipedia.org')
 no.login(*botlogin)
 
-def find_rev(p, templates):
+def find_rev(p, TemplateEditortemplates):
     #logger.info("    %s: " % (p)
     foundCleanRev = False
     revschecked = 0
@@ -123,7 +123,7 @@ def main(catname, pagename, what, templates, table):
                     'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
             
         else:
-            dp = DanmicholoParser(p.edit(readonly = True))
+            dp = TemplateEditor(p.edit(readonly = True))
             k = dp.templates.keys()
             t = None
             for tpl in templates:
@@ -236,5 +236,5 @@ def main(catname, pagename, what, templates, table):
 
 
 
-main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['flytt', 'flytting'], table='moves')
+main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
 #main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')
