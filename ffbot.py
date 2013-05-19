@@ -38,7 +38,7 @@ for loc in ['no_NO', 'nb_NO.utf8']:
 no = mwclient.Site('no.wikipedia.org')
 no.login(*botlogin)
 
-def find_rev(p, templates):
+def find_rev(p, TemplateEditortemplates):
     #logger.info("    %s: " % (p)
     foundCleanRev = False
     revschecked = 0
