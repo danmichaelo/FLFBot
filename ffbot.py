@@ -1,5 +1,6 @@
 #encoding=utf-8
 from __future__ import unicode_literals
+from __future__ import print_function 
 
 import time
 import re
@@ -19,7 +20,7 @@ formatter = logging.Formatter('[%(asctime)s %(levelname)s] %(message)s')
 
 smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
                 fromaddr = mailfrom, toaddrs = mailto, 
-                subject=u"[toolserver] CatWatchBot crashed!")
+                subject="[toolserver] CatWatchBot crashed!")
 smtp_handler.setLevel(logging.ERROR)
 logger.addHandler(smtp_handler)
 
@@ -65,7 +66,7 @@ def find_rev(p, templates):
                     #logger.debug(" checking (%s)"%rev['revid'])
                     if '*' in rev.keys() and 'user' in rev.keys():   # revision text and/or user may be hidden
                         txt = rev['*']
-                        if txt.find(u'#OMDIRIGERING [[') != -1 or txt.find(u'#REDIRECT[[') != -1:
+                        if txt.find('#OMDIRIGERING [[') != -1 or txt.find('#REDIRECT[[') != -1:
                             #logger.info('    %s: found redirect page' % (p))
                             #logger.info("   (omdirigeringsside) ")
                             foundCleanRev = True
@@ -73,7 +74,7 @@ def find_rev(p, templates):
                             break
                         foundCleanRev = True
                         for t in templates:
-                            if re.search(ur'{{\s*(mal:|template:)?%s'%t, txt, re.IGNORECASE):
+                            if re.search(r'{{\s*(mal:|template:)?%s'%t, txt, flags=re.IGNORECASE):
                                 foundCleanRev = False
                         if foundCleanRev:
                             break
@@ -121,12 +122,12 @@ def main(catname, pagename, what, templates, table):
         if in_db:
             rev = { 'to': s[0][0], 'to2': s[0][1], 'date': datetime.strptime(s[0][2], '%Y-%m-%d'), 
                     'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
-            
+
         else:
             dp = TemplateEditor(p.edit(readonly = True))
             t = None
             for tpl in templates:
-		if tpl in dp.templates:
+                if tpl in dp.templates:
                     t = dp.templates[tpl][0]
                     break
             if t == None:
@@ -155,7 +156,7 @@ def main(catname, pagename, what, templates, table):
                 rev['reason'] = t.parameters['begrunnelse'].value
 
             if 'alternativ' in t.parameters:
-                rev['to2'] += t.parameters['alternativ']
+                rev['to2'] += t.parameters['alternativ'].value
 
             vals = [p.name, rev['to'], rev['to2'], rev['date'].strftime('%F'), rev['id'], rev['parent'], rev['user'], rev['comment'], rev['reason'] ]
             cur.execute('INSERT INTO %s (page, target, target2, date, revid, parentid, user, comment, reason) VALUES (?,?,?,?,?,?,?,?,?)' % table, vals)
@@ -225,7 +226,7 @@ def main(catname, pagename, what, templates, table):
         logger.info("Ingen endringer, avslutter")
     else:
         if pagename == None:
-            print text
+            print(text)
         else:
             page = no.pages[pagename]
             page.edit()
