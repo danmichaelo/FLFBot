@@ -1,0 +1,5 @@
+*.log
+*.pyc
+wp_private.py
+ENV
+ffbot.db
