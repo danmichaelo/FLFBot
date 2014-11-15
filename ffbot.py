@@ -10,12 +10,15 @@ import mwclient
 import urllib
 from mwtemplates import TemplateEditor
 import locale
-from wp_private import botlogin, mailfrom, mailto
+from wp_private import botlogin, mailfrom, mailto, rollbar_token
 import logging
 import logging.handlers
+import rollbar
+
+rollbar.init(rollbar_token, 'production')  # access_token, environment
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(asctime)s %(levelname)s] %(message)s')
 
 smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
@@ -235,5 +238,13 @@ def main(catname, pagename, what, templates, table):
 
 
 
-main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
-#main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')
+try:
+    main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
+    # main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')
+
+except IOError:
+    rollbar.report_message('Got an IOError in the main loop', 'warning')
+except:
+    # catch all
+    rollbar.report_exc_info()
+
