@@ -124,7 +124,7 @@ def main(catname, pagename, what, templates, table):
                     'id': s[0][3], 'parent': s[0][4], 'user': s[0][5], 'comment': s[0][6], 'reason': s[0][7] }
 
         else:
-            dp = TemplateEditor(p.edit(readonly = True))
+            dp = TemplateEditor(p.text())
             t = None
             for tpl in templates:
                 if tpl in dp.templates:
