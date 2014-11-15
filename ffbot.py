@@ -39,7 +39,7 @@ for loc in ['no_NO', 'nb_NO.utf8']:
     except locale.Error:
         pass
 
-no = mwclient.Site('no.wikipedia.org')
+no = mwclient.Site(('https','no.wikipedia.org'), clients_useragent='FFBot. Run by User:Danmichaelo. Using mwclient/0.7.1')
 no.login(*botlogin)
 
 def find_rev(p, templates):
@@ -168,7 +168,7 @@ def main(catname, pagename, what, templates, table):
         #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
 
         q = { 'title': p.name.encode('utf-8'), 'oldid': rev['id'], 'diff': 'prev' }
-        link = '[%s Foreslått]' % ('//' + no.host + no.site['script'] + '?' + urllib.urlencode(q))
+        link = '[%s Foreslått]' % (no.site['server'] + no.site['script'] + '?' + urllib.urlencode(q))
         #submitter = ''<br />%s' % (rev['user'], rev['user'], link)
         
         entry = ''
