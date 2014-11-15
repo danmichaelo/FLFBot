@@ -1,4 +1,4 @@
-**FFBot** maintains [a list](https://no.wikipedia.org/wiki/Wikipedia:Flytteforslag) of requested page moves and merges at Norwegian Bokmål Wikipedia. 
+**FLFBot** (FLytteForslagBot) or FFBOT maintains [a list](https://no.wikipedia.org/wiki/Wikipedia:Flytteforslag) of requested page moves and merges at Norwegian Bokmål Wikipedia. 
 
 DB Setup: <code>sqlite3 ffbot.db</code> and 
 ````
