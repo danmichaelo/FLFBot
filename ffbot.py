@@ -1,14 +1,18 @@
-#encoding=utf-8
-from __future__ import unicode_literals
-from __future__ import print_function 
+# encoding=utf-8
+# vim: fenc=utf-8 et sw=4 ts=4 sts=4 ai
+import sys
+
+if sys.version_info < (3,4):
+    print('Requires Python 3.4')
+    sys.exit(1)
 
 import time
 import re
 from datetime import datetime, timedelta
 import sqlite3
 import mwclient
-import urllib
 from mwtemplates import TemplateEditor
+from urllib.parse import urlencode
 import locale
 from wp_private import botlogin, mailfrom, mailto, rollbar_token
 import logging
@@ -23,7 +27,7 @@ formatter = logging.Formatter('[%(asctime)s %(levelname)s] %(message)s')
 
 smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
                 fromaddr = mailfrom, toaddrs = mailto, 
-                subject="[toolserver] CatWatchBot crashed!")
+                subject="[toolserver] FFBot crashed!")
 smtp_handler.setLevel(logging.ERROR)
 logger.addHandler(smtp_handler)
 
@@ -35,12 +39,11 @@ logger.addHandler(file_handler)
 
 for loc in ['no_NO', 'nb_NO.utf8']:
     try:
-        locale.setlocale(locale.LC_ALL, loc.encode('utf-8'))
+        locale.setlocale(locale.LC_ALL, loc)
     except locale.Error:
         pass
 
-no = mwclient.Site(('https','no.wikipedia.org'), clients_useragent='FFBot. Run by User:Danmichaelo. Using mwclient/0.7.1')
-no.login(*botlogin)
+no = mwclient.Site('no.wikipedia.org', clients_useragent='FFBot. Run by User:Danmichaelo. Using mwclient/0.8', **botlogin)
 
 def find_rev(p, templates):
     #logger.info("    %s: " % (p)
@@ -168,7 +171,7 @@ def main(catname, pagename, what, templates, table):
         #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
 
         q = { 'title': p.name.encode('utf-8'), 'oldid': rev['id'], 'diff': 'prev' }
-        link = '[%s Foreslått]' % (no.site['server'] + no.site['script'] + '?' + urllib.urlencode(q))
+        link = '[%s Foreslått]' % (no.site['server'] + no.site['script'] + '?' + urlencode(q))
         #submitter = ''<br />%s' % (rev['user'], rev['user'], link)
         
         entry = ''
@@ -225,17 +228,14 @@ def main(catname, pagename, what, templates, table):
         summary.append('%d %s behandlet' % (len(removed), what.lower()))
 
     if len(added) == 0 and len(removed) == 0:
-        pass
         logger.info("Ingen endringer, avslutter")
     else:
         if pagename == None:
             print(text)
         else:
             page = no.pages[pagename]
-            page.edit()
             page.save(text, ', '.join(summary))
             logger.info('Oppdaterte %s' % pagename)
-
 
 
 try:

@@ -1,23 +1,4 @@
 #!/bin/sh
-# Reference: http://gridscheduler.sourceforge.net/htmlman/htmlman1/qsub.html
-
-# Job name:
-#$ -N FFBot
-
-# Queue:
-#$ -q task
-
-# Treat Command as binary? (yes/no)
-#$ -b no
-
-# Merge stderr into stdout? (yes/no)
-#$ -j yes
-#$ -o bot.log
-
-# 40 * * * * qcronsub /data/project/ffbot/run.job
-
-# Mail on abort
-#$ -m a
 
 echo "=== This is FFBot running on $(hostname) ===" >> ffbot.log
 
