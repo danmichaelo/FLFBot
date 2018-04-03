@@ -173,7 +173,7 @@ def main(catname, pagename, what, templates, table):
         
         entry = ''
         if len(rev['reason']) != 0:
-            entry += '<abbr style="color: #999; " title="Begrunnelse i mal">B:</span> %s<br />' % rev['reason']
+            entry += '<abbr style="color: #999; " title="Begrunnelse i mal">B:</abbr> %s<br />' % rev['reason']
         if len(rev['comment']) != 0:
             entry += '<abbr style="color: #999; " title="Redigeringsforklaring">R:</abbr> <nowiki>%s</nowiki><br />' % rev['comment']
         entry += "<small>''%s av [[Bruker:%s|%s]] den %s''</small>" % (link, rev['user'], rev['user'], rev['date'].strftime('%e. %B %Y'))
