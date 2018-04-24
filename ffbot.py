@@ -14,6 +14,7 @@ import mwclient
 from mwtemplates import TemplateEditor
 from urllib.parse import urlencode
 import locale
+from collections import OrderedDict
 from wp_private import botlogin, mailfrom, mailto, rollbar_token
 import logging
 import logging.handlers
@@ -170,7 +171,12 @@ def main(catname, pagename, what, templates, table):
 
         #begrunnelse = "<span style='color:#999;'>''Ikke gitt''</span>"
 
-        q = { 'title': p.name.encode('utf-8'), 'oldid': rev['id'], 'diff': 'prev' }
+        # To avoid messy diffs, we must use OrderedDict
+        q = OrderedDict((
+            ('title', p.name),
+            ('oldid', rev['id']),
+            ('diff', 'prev'),
+        ))
         link = '[%s Foreslått]' % (no.site['server'] + no.site['script'] + '?' + urlencode(q))
         #submitter = ''<br />%s' % (rev['user'], rev['user'], link)
         
