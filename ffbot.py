@@ -18,9 +18,9 @@ from collections import OrderedDict
 from wp_private import botlogin, mailfrom, mailto, rollbar_token
 import logging
 import logging.handlers
-import rollbar
+#import rollbar
 
-rollbar.init(rollbar_token, 'production')  # access_token, environment
+#rollbar.init(rollbar_token, 'production')  # access_token, environment
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -244,13 +244,13 @@ def main(catname, pagename, what, templates, table):
             logger.info('Oppdaterte %s' % pagename)
 
 
-try:
-    main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
+main(catname='Artikler som bør flyttes', pagename='Wikipedia:Flytteforslag', what='Flytteforslag', templates=['Flytt', 'Flytting'], table='moves')
+#try:
     # main(catname='Artikler som bør flettes', pagename=None, what='fletteforslag', templates=['flett', 'fletting', 'flett til', 'flett-til'], table='merges')
 
-except IOError:
-    rollbar.report_message('Got an IOError in the main loop', 'warning')
-except:
+#except IOError:
+#    rollbar.report_message('Got an IOError in the main loop', 'warning')
+#except:
     # catch all
-    rollbar.report_exc_info()
+#    rollbar.report_exc_info()
 
