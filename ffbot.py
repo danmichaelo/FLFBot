@@ -32,7 +32,7 @@ smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
 smtp_handler.setLevel(logging.ERROR)
 logger.addHandler(smtp_handler)
 
-file_handler = logging.handlers.RotatingFileHandler('ffbot.log', maxBytes=100000, backupCount=3)
+file_handler = logging.handlers.RotatingFileHandler('ffbot.log', maxBytes=100000, backupCount=3, encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
