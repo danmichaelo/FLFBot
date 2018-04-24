@@ -61,7 +61,7 @@ def find_rev(p, templates):
         else:
             query = no.api('query', prop='revisions', rvprop='ids|timestamp|user|content|comment', rvdir='older', titles=p, rvlimit=10, rvstartid=rev_parent)['query']
         #print 'api call',rev_parent
-        pid = query['pages'].keys()[0]
+        pid = list(query['pages'].keys())[0]
         if pid == '-1':
             #logger.info("(slettet, pid=-1)")
             break
