@@ -1,0 +1,4 @@
+MAILTO=""
+
+40 * * * * jsub -once -j y -cwd -N ffbot -mem 256m -o bot.log run.job
+
