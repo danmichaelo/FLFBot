@@ -3,3 +3,4 @@
 wp_private.py
 ENV
 ffbot.db
+.env

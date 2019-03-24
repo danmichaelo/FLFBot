@@ -1,11 +1,7 @@
 # encoding=utf-8
 # vim: fenc=utf-8 et sw=4 ts=4 sts=4 ai
 import sys
-
-if sys.version_info < (3,4):
-    print('Requires Python 3.4')
-    sys.exit(1)
-
+import os
 import time
 import re
 from datetime import datetime, timedelta
@@ -15,9 +11,12 @@ from mwtemplates import TemplateEditor
 from urllib.parse import urlencode
 import locale
 from collections import OrderedDict
-from wp_private import botlogin, mailfrom, mailto, rollbar_token
 import logging
 import logging.handlers
+
+from dotenv import load_dotenv
+load_dotenv()
+
 #import rollbar
 
 #rollbar.init(rollbar_token, 'production')  # access_token, environment
@@ -27,7 +26,7 @@ logger.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(asctime)s %(levelname)s] %(message)s')
 
 smtp_handler = logging.handlers.SMTPHandler( mailhost = ('localhost', 25),
-                fromaddr = mailfrom, toaddrs = mailto, 
+                fromaddr = os.getenv('MAIL_FROM'), toaddrs = [os.getenv('MAIL_TO')], 
                 subject="[toolserver] FFBot crashed!")
 smtp_handler.setLevel(logging.ERROR)
 logger.addHandler(smtp_handler)
@@ -44,7 +43,15 @@ for loc in ['no_NO', 'nb_NO.utf8']:
     except locale.Error:
         pass
 
-no = mwclient.Site('no.wikipedia.org', clients_useragent='FFBot. Run by User:Danmichaelo. Using mwclient/0.8', **botlogin)
+no = mwclient.Site(
+    'no.wikipedia.org',
+    consumer_token=os.getenv('MW_CONSUMER_TOKEN'),
+    consumer_secret=os.getenv('MW_CONSUMER_SECRET'),
+    access_token=os.getenv('MW_ACCESS_TOKEN'),
+    access_secret=os.getenv('MW_ACCESS_SECRET'),
+    clients_useragent='FFBot. Run by User:Danmichaelo'
+)
+
 
 def find_rev(p, templates):
     #logger.info("    %s: " % (p)
@@ -66,12 +73,12 @@ def find_rev(p, templates):
             #logger.info("(slettet, pid=-1)")
             break
         else:
-            if 'revisions' in query['pages'][pid].keys():
+            if 'revisions' in list(query['pages'][pid].keys()):
                 revs = query['pages'][pid]['revisions']
                 for rev in revs:
                     revschecked += 1
                     #logger.debug(" checking (%s)"%rev['revid'])
-                    if '*' in rev.keys() and 'user' in rev.keys():   # revision text and/or user may be hidden
+                    if '*' in list(rev.keys()) and 'user' in list(rev.keys()):   # revision text and/or user may be hidden
                         txt = rev['*']
                         if txt.find('#OMDIRIGERING [[') != -1 or txt.find('#REDIRECT[[') != -1:
                             #logger.info('    %s: found redirect page' % (p))
@@ -138,10 +145,10 @@ def main(catname, pagename, what, templates, table):
                     t = dp.templates[tpl][0]
                     break
             if t == None:
-                logger.warn("> fant ikke noen mal")
+                logger.warning("> fant ikke noen mal")
                 continue
             if not 1 in t.parameters:
-                logger.warn(" > Ingen parametre gitt til malen!")
+                logger.warning(" > Ingen parametre gitt til malen!")
                 continue
 
             logger.info(' -> %s', t.parameters[1])
@@ -149,7 +156,7 @@ def main(catname, pagename, what, templates, table):
 
             rev = find_rev(p.name, templates)
             if rev == False:
-                logger.warn(' fant ikke innsettingsrevisjonen for malen')
+                logger.warning(' fant ikke innsettingsrevisjonen for malen')
                 continue
 
             rev['to'] = t.parameters[1].value.strip('[]')
