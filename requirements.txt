@@ -1,0 +1,4 @@
+mwclient
+mwtemplates
+rollbar
+python-dotenv
