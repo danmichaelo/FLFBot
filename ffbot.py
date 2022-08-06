@@ -64,22 +64,22 @@ def find_rev(p, templates):
             #logger.info('    %s: tagged from beginning (%s)' % (p,q))
             break
         elif rev_parent == -1:
-            query = no.api('query', prop='revisions', rvprop='ids|timestamp|user|content|comment', rvdir='older', titles=p, rvlimit=10)['query']
+            query = no.api('query', prop='revisions', rvslots='main', rvprop='ids|timestamp|user|content|comment', rvdir='older', titles=p, rvlimit=10)['query']
         else:
-            query = no.api('query', prop='revisions', rvprop='ids|timestamp|user|content|comment', rvdir='older', titles=p, rvlimit=10, rvstartid=rev_parent)['query']
+            query = no.api('query', prop='revisions', rvslots='main', rvprop='ids|timestamp|user|content|comment', rvdir='older', titles=p, rvlimit=10, rvstartid=rev_parent)['query']
         #print 'api call',rev_parent
-        pid = list(query['pages'].keys())[0]
-        if pid == '-1':
+        page0 = query['pages'][0]
+        if page0.get('missing') is True:
             #logger.info("(slettet, pid=-1)")
             break
         else:
-            if 'revisions' in list(query['pages'][pid].keys()):
-                revs = query['pages'][pid]['revisions']
+            if 'revisions' in page0:
+                revs = page0['revisions']
                 for rev in revs:
                     revschecked += 1
                     #logger.debug(" checking (%s)"%rev['revid'])
-                    if '*' in list(rev.keys()) and 'user' in list(rev.keys()):   # revision text and/or user may be hidden
-                        txt = rev['*']
+                    if 'slots' in list(rev.keys()) and 'user' in list(rev.keys()):   # revision text and/or user may be hidden
+                        txt = rev['slots']['main']['content']
                         if txt.find('#OMDIRIGERING [[') != -1 or txt.find('#REDIRECT[[') != -1:
                             #logger.info('    %s: found redirect page' % (p))
                             #logger.info("   (omdirigeringsside) ")
